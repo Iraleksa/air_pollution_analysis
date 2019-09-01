@@ -1,9 +1,10 @@
 pacman::p_load(readr,dplyr,tidyverse,autoplotly,ggplot2,lubridate,caret,plotly,reshape2,openair)
 
+
 #Reading data ----
 
 
-data_all <-  read.csv("Data/Raw/2019_01_Gener_qualitat_aire_BCN.csv",header = TRUE, sep=",", encoding = "UTF-8")
+data_all <-  read.csv("Final Test/Student _Challendge//Data/Raw/2019_01_Gener_qualitat_aire_BCN.csv",header = TRUE, sep=",", encoding = "UTF-8")
 
 # Data exploration data
 summary(data_all)
@@ -11,9 +12,9 @@ str(data_all)
 hist(data_all$valor_no2)
 sapply(data_all,class)
 mean(is.na(data_all))
+head(data_all)
 
-# Data transformation
-
+### Initial data preprocessing ####
 
 data_all$valor_o3 <- gsub(' µg/m³', '', data_all$valor_o3)
 data_all$valor_no2 <- gsub(' µg/m³', '', data_all$valor_no2)
@@ -34,8 +35,7 @@ data_all$valor_pm10[is.na(data_all$valor_pm10)] <- 0
 # Date transformation to POSIXct format
 data_all$DateTime <- as.POSIXct(data_all$dateTime,tz = "UTC",origin = "1970/01/01 00:00:00", "%Y/%m/%d %H:%M:%S")
 
-
-#### Create "year" attribute with lubridate ####
+# Create "year" attribute with lubridate 
 data_all$year <- year(data_all$DateTime)
 data_all$month <-month(data_all$DateTime, label = TRUE, abbr = FALSE)
 data_all$week <- week(data_all$DateTime)
@@ -43,13 +43,8 @@ data_all$weekday<-wday(data_all$DateTime, label = T,abbr = F, week_start = getOp
 data_all$day <- day(data_all$DateTime)
 data_all$hour <- hour(data_all$DateTime)
 
-
 # Rename stations and pollutants
 data_all$nom_cabina <- gsub('Barcelona - ', '', data_all$nom_cabina)
-
-# rename(Full_Year, kitchen = Sub_metering_1)
-# data_all<-data_all %>%  dplyr:: rename(Tropospheric_Ozone = valor_o3,
-                                     # Nitrogen_dioxide = valor_no2, Suspended_particles = valor_pm10)
 
 # Summorizing all values for polution
 data_all <- data_all %>% mutate(total_pollution = valor_no2 + valor_o3 + valor_pm10)
@@ -58,6 +53,10 @@ data_all <- as.data.frame(data_all)
 # Select only Jan 2019
 # january_data <- filter(data_all, year == 2019 & month == 'January')
 january_data <- data_all
+january_data <- january_data[,c(19, 1:18,20:26)]
+# january_data<-january_data %>%  dplyr:: rename(date = DateTime)
+
+#### Data exploration:Patterns in pollutants occurance withtin the location ####
 
 # Selecting data for plots
 pollutants_data<-data_all %>% select('nom_cabina', 'valor_no2','valor_o3','valor_pm10','total_pollution')
@@ -71,17 +70,17 @@ all_pollution <- as.data.frame(all_pollution)
 all_pollution['Pollutor'] <- row.names(all_pollution)
 colnames(all_pollution)[1] <-"values"
 
-# Plot: Total pollution during Jan'19 by each pollutor in all locations.
+# Plot 1: Total pollution during Jan'19 by each pollutor in all locations.
 p <-ggplot(all_pollution, aes(Pollutor, values))+geom_bar(stat = "identity",aes(fill = Pollutor))+ggtitle("Pollution during Jan'19 by each pollutor in all locations")
  ggplotly(p)
 
-# Plot: pollution values distribution among the stations 1.
+# Plot 2: pollution values distribution among the stations.
 # From this plot we can see, that Sants s the least polluted location. 
 
 ggplot(data=pollutants_data_melt, aes(x=reorder(nom_cabina, pollutant), y=value, fill=pollutant)) +
     geom_bar(stat="identity")+ theme_classic()+theme(axis.text.x = element_text(angle=60, hjust=1))
 
-# Plot: pollution values distribution among the stations 2. The same, as previous plot, but different display
+# Plot 3: pollution values distribution among the stations . The same, as previous plot, but different display
 
 # From this chart we can see, that Observ Fabra area is pollutted by tropospheric Ozone much higher, than any other area.
 # The most polluted locations are Eixample, Gràcia, Observ Fabra and Vall Hebron. 
@@ -95,7 +94,7 @@ ggplot(aes(nom_cabina, Value, fill = Type)) +
   theme(axis.text.x = element_text(angle=35, hjust=1))
 ggplotly(pollution_distribution)
 
-# Plot: pollution values distribution among the stations 3. 
+# Plot 4: pollution values distribution among the stations . 
 # From this plot we can see, that valor_no2 is themost problematic pollutant is Nitrogen dioxide (valor_no2)
 valor_no2 <- ggplot(data=data_all, aes(x=reorder(nom_cabina, -valor_no2), y=valor_no2, fill=nom_cabina)) +
   geom_bar(stat="identity")+ggtitle(" ")+ theme_classic()+
@@ -118,23 +117,23 @@ p %>% layout(annotations = list(
   layout(showlegend = FALSE)
 
 # How values for each station are distributed
+pollutants_data_melt$value[pollutants_data_melt$value==0] <- NA
 ph<- ggplot(pollutants_data_melt, aes(x=value)) + geom_histogram(color="darkblue", fill="lightblue", stat="count")+
   xlab("Station") + ylab("value")+ggtitle("Values pollution distribution")+
   theme(plot.title = element_text(hjust = 0.5))+
   facet_wrap(~nom_cabina,scales = "free_x")
 
 ph<- ph + theme(axis.text.x = element_text(face="plain", color="black", 
-                                           size=8,angle=45),
+                                           size=8,angle=0),
                 axis.text.y = element_text(face="plain", color="darkgrey", 
                                            size=10, angle=0))
 
 ggplotly(ph)
 
-# How values for each station are distributed
-
+# PLot 5. How values for each station are distributed
 
 ph<- ggplot(pollutants_data_melt, aes(y=value, x=nom_cabina)) + geom_histogram(color="darkblue", fill="lightblue", stat="identity")+
-  xlab("Station") + ylab("value")+ggtitle("Values pollution distribution")+
+  xlab("Station") + ylab("value")+ggtitle("Distribution of different pollutants per station")+
   theme(plot.title = element_text(hjust = 0.5))+
   facet_wrap(~pollutant,scales = "free_x")
 
@@ -145,8 +144,10 @@ ph<- ph + theme(axis.text.x = element_text(face="plain", color="black",
 
 ggplotly(ph)
 
-# Time dependancy exploration
-january_data <- january_data[,c(19, 1:18,20:26)]
+#### Data exploration:Patterns in pollutants occurance withtin the daytime ####
+
+# Plot 6. Time dependancy exploration
+
 
 pollutants_data_hour<-january_data %>% select('hour', 'valor_no2','valor_o3','valor_pm10','total_pollution')
 pollutants_data_hour <- pollutants_data_hour %>% group_by(hour) %>% summarise_all(funs(sum))
@@ -166,23 +167,23 @@ dh<- dh + theme(axis.text.x = element_text(face="plain", color="black",
 
 ggplotly(dh)
 
+# Plot 7.
 
-dh<-ggplot(pollutants_data_hour_melt, aes(y=value, x=hour)) + geom_line()+
+p1<-ggplot(pollutants_data_hour_melt, aes(y=value, x=hour)) + geom_line()+
   ggtitle("Pollution during the day")+
   theme(plot.title = element_text(hjust = 0.5))+
     facet_wrap(~pollutant,scales = "free_x")
 
-dh<- dh + theme(axis.text.x = element_text(face="plain", color="black", 
+p1<- p1 + theme(axis.text.x = element_text(face="plain", color="black", 
                                            size=8,angle=45),
                 axis.text.y = element_text(face="plain", color="darkgrey", 
                                            size=10, angle=0))
 
-ggplotly(dh)
+ggplotly(p1)
 
-hist(pollutants_data_hour$hour,pollutants_data_hour$valor_no2)
-
-#   Analyse time dependancy in each station - stacked bars
-# ---- Run block start ------------
+# Plot 8.Analyse time dependancy in each station - stacked bars
+   
+# ---- Run block start 
 pollutants_data_hour_st<-january_data %>% select('nom_cabina','hour', 'valor_no2','valor_o3','valor_pm10','total_pollution')
 pollutants_data_hour_st <- pollutants_data_hour_st %>% group_by(nom_cabina,hour) %>% summarise_all(funs(sum))
 pollutants_data_hour_st_melt <- melt(pollutants_data_hour_st, na.rm = TRUE, id.vars = c('nom_cabina','hour'))
@@ -201,11 +202,11 @@ dh<- dh + theme(axis.text.x = element_text(face="plain", color="black",
 
 ggplotly(dh)
 
-# ---- Run block end------------
+# ---- Run block end
 
-#   Analyse time dependancy in each station - lines
+#  Plot 9. Analyse time dependancy in each station - lines
 
-# ---- Run block start ------------
+# ---- Run block start 
 # pollutants_data_hour_st_line<-january_data %>% select('nom_cabina','hour', 'valor_no2','valor_o3','valor_pm10','total_pollution')
 pollutants_data_hour_st_line<-january_data %>% select('nom_cabina','hour', 'valor_no2','valor_o3','valor_pm10')
 pollutants_data_hour_st_line <- pollutants_data_hour_st_line %>% group_by(nom_cabina,hour) %>% summarise_all(funs(sum))
@@ -230,19 +231,17 @@ facet_wrap(~nom_cabina,scales = "free_x")
 ggplotly(plot_AP_mon)
 
 
-#  Time Variation
-january_data<-january_data %>%  dplyr:: rename(date = DateTime)
+#  Plot 10-13. Time Variation
 
-openair::timeVariation(january_data,pollutant = "valor_no2",normalise = FALSE)
-openair::timeVariation(january_data,pollutant = "valor_o3",normalise = FALSE)
-openair::timeVariation(january_data,pollutant = "valor_pm10",normalise = FALSE)
+
+openair::timeVariation(january_data,pollutant = "valor_no2",normalise = FALSE,cols = "red")
+openair::timeVariation(january_data,pollutant = "valor_o3",normalise = FALSE,cols = "blue")
+openair::timeVariation(january_data,pollutant = "valor_pm10",normalise = FALSE,cols = "green")
 openair::timeVariation(january_data,pollutant = c("valor_no2", "valor_o3", "valor_pm10"),normalise = FALSE)
 
-# ---- Run block end------------
+# ---- Run block end
 
-# timeVariation(january_data, pollutant = "valor_no2")
-
-#### CONCLUSIONS ####
+#### Summary ####
 
   
 
